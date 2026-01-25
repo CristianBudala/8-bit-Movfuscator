@@ -25,7 +25,8 @@ int main(int argc, char **argv) {
 
     fclose(f);
 
-    // pentru DEBUG: afisam rezultatul din parser la stdout
+    // pt Debugging: afisam rezultatul din parser la stdout
+    printf("--- DEBUG PARSER ---\n");
     for (int i = 0; i < program_len; i++) {
 
         if (program[i].type == INSTR_MOV) {
@@ -35,9 +36,19 @@ int main(int argc, char **argv) {
             printf("XOR %s -> %s\n", program[i].op1, program[i].op2);
         }
         else if (program[i].type == INSTR_INT) {
-            printf("INT %x\n", program[i].value);
+            printf("INT %s\n", program[i].op1);
+        }
+        else if (program[i].type == INSTR_INC) {
+            printf("INC %s\n", program[i].op1);
+        }
+        else if (program[i].type == INSTR_ADD) {
+            printf("ADD %s, %s\n", program[i].op1, program[i].op2);
+        }
+        else if (program[i].type == INSTR_SUB) {
+            printf("SUB %s, %s\n", program[i].op1, program[i].op2);
         }
     }
+    printf("--------------------\n");
 
     FILE *out = fopen("output.s", "w");
     emit_program(out);

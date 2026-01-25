@@ -1,4 +1,10 @@
 *.s
+*.o
 test
 movf
 .vscode/
+movcc
+output.s
+test_add
+test_sub
+test_sub.s

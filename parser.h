@@ -15,7 +15,10 @@ enum InstrType {
     INSTR_CMP,
     INSTR_JGE,
     INSTR_JMP,
-    INSTR_LABEL
+    INSTR_LABEL,
+    INSTR_INC,
+    INSTR_ADD,
+    INSTR_SUB,
 };
 
 // structura unei instructiuni
@@ -23,7 +26,6 @@ struct Instruction {
     enum InstrType type;
     char op1[32];   // operand 1 ca text (ex: "$4", "%eax", "x1")
     char op2[32];   // operand 2 ca text
-    int value;      // folosit doar pentru INT (ex: 0x80)
 };
 
 // vectorul de instructiuni

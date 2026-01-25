@@ -23,119 +23,167 @@ void trim(char *s) {
 }
 
 void parse_line(char *line) {
-    trim(line);
-    
-    // eliminam spatiile si tab-urile de la inceputul liniei
-    while (line[0] == ' ' || line[0] == '\t') {
-        memmove(line, line + 1, strlen(line));
-    }
+    // 1. Verificam daca linia e goala sau comentariu
+    if (!line || strlen(line) < 2) return;
 
-    // normalizam movl -> mov (ca sa il putem parsa usor, oricum nu ne trebuie tipul in instructiune neaparat)
-    if (strncmp(line, "movl", 4) == 0) {
-        // mutam stringul cu o pozitie la stanga
-        memmove(line + 3, line + 4, strlen(line + 4) + 1);
-        line[3] = ' ';   // obtinem "mov ..."
-    }
-
-    // daca linie goala
-    if (line[0] == 0)
-        return;
-
-    // daca .data
+    // 2. Gestionam sectiunile .data si .text
+    // Daca suntem in .data, activam flag-ul
     if (strstr(line, ".data")) {
         in_data = 1;
         return;
     }
-
-    // daca .text
+    // Daca suntem in .text, il dezactivam
     if (strstr(line, ".text")) {
         in_data = 0;
         return;
     }
 
-    // daca suntem in .data, copiem tot exact cum este
+    // Daca suntem in sectiunea de date, copiem linia direct in bufferul nostru
+    // Nu o parsam, o pastram asa cum e pentru asamblatorul final.
     if (in_data) {
-        int len = strlen(line);
-        memcpy(data_section + data_len, line, len);
-        data_len += len;
-        data_section[data_len++] = '\n';
+        strcpy(data_section + data_len, line);
+        data_len += strlen(line);
+        // newline la final
+        if (data_section[data_len - 1] != '\n') {
+            data_section[data_len++] = '\n';
+        }
         return;
     }
 
-    // de aici — doar cod din .text
+    // --- De aici parsam codul din .text ---
 
-    // directive (.global, etc.)
-    if (line[0] == '.')
-        return;
+    // Ignoram alte directive care incep cu punct (ex: .global main)
+    if (line[0] == '.') return;
 
-    // etichete in .text (main:, et_parcurgere:, etc.)
-    if (strchr(line, ':')) {
-        // scoatem doua puncte
-        line[strcspn(line, ":")] = 0;
+    // Spargem linia in tokens cu strtok
+    // Delimitatori: spatiu, tab (\t), virgula, newline (\n)
+    char *token = strtok(line, " \t,\n");
 
+    // Daca e linie goala
+    if (!token) return;
+
+    // 3. Verificam daca e eticheta (se termina in ':')
+    int len = strlen(token);
+    if (token[len - 1] == ':') {
+        token[len - 1] = '\0'; // Stergem doua puncte
+        
         program[program_len].type = INSTR_LABEL;
-        strcpy(program[program_len].op1, line);
+        strcpy(program[program_len].op1, token);
         program_len++;
         return;
     }
 
-    char a[32], b[32];
-    unsigned int interrupt_no;
-
-    // MOV dest, src
-    if (sscanf(line, "mov %31[^,], %31s", a, b) == 2) {
-
-        // eliminam sufixul "l " din fata operandului (ex: movl $1, %eax)
-        if (a[0] == 'l' && a[1] == ' ')
-            memmove(a, a + 2, strlen(a + 1));
-
+    // 4. Identificam instructiunea
+    
+    // MOV sau MOVL
+    if (strcmp(token, "mov") == 0 || strcmp(token, "movl") == 0) {
         program[program_len].type = INSTR_MOV;
-        strcpy(program[program_len].op1, a);
-        strcpy(program[program_len].op2, b);
-        program_len++;
-        return;
-    }
+        
+        // Luam primul operand (sursa)
+        char *op1 = strtok(NULL, " \t,\n");
+        // Luam al doilea operand (destinatia)
+        char *op2 = strtok(NULL, " \t,\n");
 
-    // XOR dest, src
-    if (sscanf(line, "xor %31[^,], %31s", a, b) == 2) {
+        if (op1 && op2) {
+            strcpy(program[program_len].op1, op1);
+            strcpy(program[program_len].op2, op2);
+            program_len++;
+        }
+    }
+    // XOR
+    else if (strcmp(token, "xor") == 0) {
         program[program_len].type = INSTR_XOR;
-        strcpy(program[program_len].op1, a);
-        strcpy(program[program_len].op2, b);
-        program_len++;
-        return;
-    }
+        
+        char *op1 = strtok(NULL, " \t,\n");
+        char *op2 = strtok(NULL, " \t,\n");
 
-    // INT $value
-    if (sscanf(line, "int $%x", &interrupt_no) == 1) {
-        program[program_len].type = INSTR_INT;
-        program[program_len].value = interrupt_no;
-        program_len++;
-        return;
+        if (op1 && op2) {
+            strcpy(program[program_len].op1, op1);
+            strcpy(program[program_len].op2, op2);
+            program_len++;
+        }
     }
-
     // CMP
-    if (sscanf(line, "cmp %31[^,], %31s", a, b) == 2) {
+    else if (strcmp(token, "cmp") == 0) {
         program[program_len].type = INSTR_CMP;
-        strcpy(program[program_len].op1, a);
-        strcpy(program[program_len].op2, b);
-        program_len++;
-        return;
-    }
+        
+        char *op1 = strtok(NULL, " \t,\n");
+        char *op2 = strtok(NULL, " \t,\n");
 
-    // JGE label
-    if (sscanf(line, "jge %31s", a) == 1) {
+        if (op1 && op2) {
+            strcpy(program[program_len].op1, op1);
+            strcpy(program[program_len].op2, op2);
+            program_len++;
+        }
+    }
+    // INT (Interrupt)
+    else if (strcmp(token, "int") == 0) {
+        program[program_len].type = INSTR_INT;
+        
+        char *val = strtok(NULL, " \t,\n");
+        
+        if (val) {
+            strcpy(program[program_len].op1, val);
+            program_len++;
+        }
+    }
+    // JGE (Jump if Greater or Equal)
+    else if (strcmp(token, "jge") == 0) {
         program[program_len].type = INSTR_JGE;
-        strcpy(program[program_len].op1, a);
-        program_len++;
-        return;
+        char *label = strtok(NULL, " \t,\n");
+        if (label) {
+            strcpy(program[program_len].op1, label);
+            program_len++;
+        }
+    }
+    // JMP (Jump neconditionat)
+    else if (strcmp(token, "jmp") == 0) {
+        program[program_len].type = INSTR_JMP;
+        char *label = strtok(NULL, " \t,\n");
+        if (label) {
+            strcpy(program[program_len].op1, label);
+            program_len++;
+        }
+    }
+    // INC (Increment)
+    else if (strcmp(token, "inc") == 0) {
+        program[program_len].type = INSTR_INC;
+        
+        // Luam operandul (ex: %eax)
+        char *op1 = strtok(NULL, " \t,\n");
+        
+        if (op1) {
+            strcpy(program[program_len].op1, op1);
+            program_len++;
+        }
     }
 
-    // JMP label
-    if (sscanf(line, "jmp %31s", a) == 1) {
-        program[program_len].type = INSTR_JMP;
-        strcpy(program[program_len].op1, a);
-        program_len++;
-        return;
+    // ADD
+    else if (strcmp(token, "add") == 0) {
+        program[program_len].type = INSTR_ADD;
+        
+        char *op1 = strtok(NULL, " \t,\n");
+        char *op2 = strtok(NULL, " \t,\n");
+
+        if (op1 && op2) {
+            strcpy(program[program_len].op1, op1);
+            strcpy(program[program_len].op2, op2);
+            program_len++;
+        }
+    }
+
+    // SUB
+    else if (strcmp(token, "sub") == 0) {
+        program[program_len].type = INSTR_SUB;
+        
+        char *op1 = strtok(NULL, " \t,\n");
+        char *op2 = strtok(NULL, " \t,\n");
+
+        if (op1 && op2) {
+            strcpy(program[program_len].op1, op1);
+            strcpy(program[program_len].op2, op2);
+            program_len++;
+        }
     }
 
 }
