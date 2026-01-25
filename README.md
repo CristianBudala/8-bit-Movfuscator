@@ -83,7 +83,7 @@ Current status of the pseudo-assembly instructions supported by the compiler:
 * **OS:** Linux terminal.
 * **Compiler:** GCC with 32-bit support (package `gcc-multilib`).
 
-### 1. Cloning the Repo
+### 1. Clone the Repo
 Duh.
 ```bash
 git clone https://github.com/CristianBudala/8-bit-Movfuscator
