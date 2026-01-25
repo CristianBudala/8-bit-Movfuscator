@@ -12,7 +12,7 @@
 8-bit Movfuscator
 Based on M/o/Vfuscator by Chris Domas - @xoreaxeaxeax
 
-By Cristian Budala - @CristianBudala and Imosanu Joshua - @imo006
+By Cristian Budala - @CristianBudala and Joshua Imosanu - @imo006
 
 ------------------------------------------------------------------
 
