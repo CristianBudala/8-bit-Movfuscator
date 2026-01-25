@@ -36,7 +36,7 @@ The current project is a minimalistic, educational compiler for numbers on 8-bit
 🎓 This project was developed as part of the course "Computer Systems Arhitecture", under the supervision of [Prof. PhD. Cristian RUSU](https://www.researchgate.net/profile/Cristian-Rusu), at the Department for Mathematics and Computer Science, University of Bucharest.
 
 ## ❓ Why?
-By reducing a program to almost exclusively `MOV` instructions, reverse engineering becomes virtually impossible. It wipes out the patterns that disassemblers and decompilers depend on, so the code stops “making sense”. The code becomes almost impossible to break - still breakable (probably) but the process becomes a lot lengthier and more exprensive.
+By reducing a program to almost exclusively `MOV` instructions, reverse engineering becomes virtually impossible. It wipes out the patterns that disassemblers and decompilers depend on, so the code stops “making sense”. The code becomes almost impossible to break - [still breakable](https://www.youtube.com/watch?v=d_R8i0dVBsQ), but the process becomes a lot lengthier and more exprensive.
 Plus it's fun!
 
 ## ❗ Limitations
