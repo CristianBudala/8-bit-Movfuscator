@@ -56,8 +56,75 @@ void emit_sar_table(FILE *out) {
         fprintf(out, "\n");
     }
 }
+// folosita pentru a returna rezultatul unui compare, mergand pe structura zero sign overflow (va merge deci pentru orice jump-uri conditionate cu int-uri signed)
+// vom structura elementele table-ului astfel:
+// 0000 0000 0000 0000 0000 0000 0000 0111
+// unde 1           1           1           => ultimii 3 biti
+//   zeroflag    signflag   overflowflag
+//
+// Cmp source destination merge pe logica dest - source. => actualizare flag-uri
+// Daca am cmp %eax, %ebx => ebx - eax si actualizeaza flag-urile coresp
+// JG: doar daca ebx - eax > 0 <=> daca ebx > eax => deci daca am 000/011
+// JGE: daca am ebx - eax >= 0 ⇔ ebx >= eax => deci pot avea 000/011/100/
+// JL: daca am ebx - eax < 0 ⇔ ebx < eax => deci daca am 001/010
+// JLE: daca am ebx-eax <= 0 ⇔ ebx <= eax => deci daca am 001/010/100
+// JE: daca am ebx - eax == 0 ⇔ ebx == eax => deci daca am 100
+// JNE: daca am ebx - eax != 0 ⇔ ebx != eax => deci daca am 000/001/010/011
 
 
+// tot 256 x 256, consider i dest, j src 
+// efectuez i - j si in functie de rezultat setez "flag-urile", iar la final le combin 
+// zero flag daca diff e zero
+// signflag dupa MSB 
+// overflow va merge dupa logica:
+    // extrag MSBii src, dest si diff 
+    // daca scad doua numere, ambele pozitive/negative, nu pot avea overflow. Ma aproprii mereu de 0 dar nu pot trece limitele reprezentarii signed pe 8 biti 
+    // ex: 127 - 0 va fi 127, 127 - 127 va fi 0     // -127 - (-1) = -126, -127 - (-127) = 0
+    // asadar, daca sign-ul este aceelasi intre src si dest, 100% nu am overflow
+    // altfel e posibil overflow, deoarece "cresc" intr-o anumita directie, inspre o anumita limita, nu inspre 0 ca in celelalt caz 
+    // verific astfel, daca semnul lui dest este diferit de semnul rezultatului scaderii dest - src, deoarece ar inseamna ca am trecut pe cealalta parte (de la 127 la -128 de ex)
+
+// ramane sa impachetez valorile in var flag
+// 
+
+void emit_cmp_table(FILE *out) {
+    fprintf(out, "cmp_table:\n");
+    // 256 x 256 bytes pentru a putea compara orice numar cu orice alt numar
+    for (int i = 0; i < 256; i++) {
+        fprintf(out, "    .byte "); // Rand nou pentru fiecare i (high byte)
+        for (int j = 0; j < 256; j++) {
+            int flag = 0;
+            int diff = (i - j) & 255; // 255 e 1111 1111 si simulez astfel cum ar functiona overflow-ul pe 8 biti
+            int zeroflag = (diff == 0) ? 1 : 0; 
+            // pentru signflag, voi folosi & 1000 0000 (128), pentru a verifica MSB 
+            int signflag = (diff & 128) ? 1 : 0;
+            // la fel si pentru semnele src si dest, necesare pentru determinarea unui overflow 
+            int signi = (i & 128) ? 1 : 0;
+            int signj = (j & 128) ? 1 : 0;
+
+            int overflow = 0;
+            if (signi != signj) { // daca am semnele egale intre dest si src, nu pot avea overfow
+                if (signi != signflag) { 
+                    overflow = 1;
+                }
+            }
+            
+            // profit de codificarea pe biti si adaug puterea lui 2 coresp bitului ce reprezinta flag-ul respectiv
+            if (zeroflag) { 
+                flag += 4; // 100
+            }
+            if (signflag) { 
+                flag += 2; // 010
+            }
+            if (overflow) { 
+                flag += 1; // 001
+            }
+            
+            fprintf(out, "%d%s", flag, (j == 255) ? "" : ", ");
+        }
+        fprintf(out, "\n");
+    }
+}
 
 void emit_inc_table(FILE *out) {
     fprintf(out, "inc_table:\n");
@@ -154,7 +221,8 @@ void emit_program(FILE *out) {
     fprintf(out, "val1: .long 0\n");
     fprintf(out, "val2: .long 0\n");
     fprintf(out, "restore: .long 0\n");
-
+    fprintf(out, "flags: .long 0\n");
+    
     emit_inc_table(out);
     emit_add_table(out);
     emit_sub_table(out);
