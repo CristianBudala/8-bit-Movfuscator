@@ -90,6 +90,45 @@ void parse_line(char *line) {
             program_len++;
         }
     }
+    // AND
+    else if (strcmp(token, "and") == 0) {
+        program[program_len].type = INSTR_AND;
+        
+        char *op1 = strtok(NULL, " \t,\n");
+        char *op2 = strtok(NULL, " \t,\n");
+
+        if (op1 && op2) {
+            strcpy(program[program_len].op1, op1);
+            strcpy(program[program_len].op2, op2);
+            program_len++;
+        }
+    }
+    //OR
+    else if (strcmp(token, "or") == 0) {
+        program[program_len].type = INSTR_OR;
+        
+        char *op1 = strtok(NULL, " \t,\n");
+        char *op2 = strtok(NULL, " \t,\n");
+
+        if (op1 && op2) {
+            strcpy(program[program_len].op1, op1);
+            strcpy(program[program_len].op2, op2);
+            program_len++;
+        }
+    }
+    // NOT
+    else if (strcmp(token, "not") == 0) {
+        program[program_len].type = INSTR_NOT;
+        
+        char *op1 = strtok(NULL, " \t,\n");
+        char *op2 = strtok(NULL, " \t,\n");
+
+        if (op1 && op2) {
+            strcpy(program[program_len].op1, op1);
+            strcpy(program[program_len].op2, op2);
+            program_len++;
+        }
+    }
     // XOR
     else if (strcmp(token, "xor") == 0) {
         program[program_len].type = INSTR_XOR;
@@ -136,6 +175,103 @@ void parse_line(char *line) {
             program_len++;
         }
     }
+    // JG (Jump if greater)
+    else if (strcmp(token, "jg") == 0) {
+        program[program_len].type = INSTR_JG;
+        char *label = strtok(NULL, " \t,\n");
+        if (label) {
+            strcpy(program[program_len].op1, label);
+            program_len++;
+        }
+    }
+    // JLE (Jump if less or equal)
+    else if (strcmp(token, "jle") == 0) {
+        program[program_len].type = INSTR_JLE;
+        char *label = strtok(NULL, " \t,\n");
+        if (label) {
+            strcpy(program[program_len].op1, label);
+            program_len++;
+        }
+    }
+    // JL (Jump if less)
+    else if (strcmp(token, "jl") == 0) {
+        program[program_len].type = INSTR_JG;
+        char *label = strtok(NULL, " \t,\n");
+        if (label) {
+            strcpy(program[program_len].op1, label);
+            program_len++;
+        }
+    }
+    // JE (Jump if equal)
+    else if (strcmp(token, "je") == 0) {
+        program[program_len].type = INSTR_JE;
+        char *label = strtok(NULL, " \t,\n");
+        if (label) {
+            strcpy(program[program_len].op1, label);
+            program_len++;
+        }
+    }
+    // JNE (Jump if not equal)
+    else if (strcmp(token, "jne") == 0) {
+        program[program_len].type = INSTR_JNE;
+        char *label = strtok(NULL, " \t,\n");
+        if (label) {
+            strcpy(program[program_len].op1, label);
+            program_len++;
+        }
+    }
+    // SHR (Shift Right - unsigned)
+    else if (strcmp(token, "shr") == 0) {
+        program[program_len].type = INSTR_SHR;
+        
+        char *op1 = strtok(NULL, " \t,\n");
+        char *op2 = strtok(NULL, " \t,\n");
+
+        if (op1 && op2) {
+            strcpy(program[program_len].op1, op1);
+            strcpy(program[program_len].op2, op2);
+            program_len++;
+        }
+    }   
+    // SAR (Shift Right - signed)
+    else if (strcmp(token, "sar") == 0) {
+            program[program_len].type = INSTR_SAR;
+            
+            char *op1 = strtok(NULL, " \t,\n");
+            char *op2 = strtok(NULL, " \t,\n");
+
+            if (op1 && op2) {
+                strcpy(program[program_len].op1, op1);
+                strcpy(program[program_len].op2, op2);
+                program_len++;
+            }
+        }   
+    // SHL (Shift left - unsigned)
+    else if (strcmp(token, "shl") == 0) {
+            program[program_len].type = INSTR_SHL;
+            
+            char *op1 = strtok(NULL, " \t,\n");
+            char *op2 = strtok(NULL, " \t,\n");
+
+            if (op1 && op2) {
+                strcpy(program[program_len].op1, op1);
+                strcpy(program[program_len].op2, op2);
+                program_len++;
+            }
+        }   
+    // SAL (Shift left - signed)
+    else if (strcmp(token, "sal") == 0) {
+            program[program_len].type = INSTR_SAL;
+            
+            char *op1 = strtok(NULL, " \t,\n");
+            char *op2 = strtok(NULL, " \t,\n");
+
+            if (op1 && op2) {
+                strcpy(program[program_len].op1, op1);
+                strcpy(program[program_len].op2, op2);
+                program_len++;
+            }
+        }   
     // JMP (Jump neconditionat)
     else if (strcmp(token, "jmp") == 0) {
         program[program_len].type = INSTR_JMP;
