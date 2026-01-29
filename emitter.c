@@ -2,6 +2,66 @@
 #include "parser.h"
 #include <string.h>
 
+
+void emit_jge_table(FILE *out) {
+    fprintf(out, "jge_table:\n");
+    fprintf(out, "    .byte ");
+    // scriu pur si simplu tot table-ul intr-un fprintf
+    // o sa fie 8 in total si se acceseaza cu valoarea flag-ului ca offset 
+    // pentru ca flag va acoperi toate valorile pe 3 biti (0-7) 
+
+    // 000, 011, 100 vor fi valorile pt flag la care vom efectua jump-ul conditionat
+    // valoarea va fi 4 (32 de biti cat are adresa unui label), deoarece cand voi folosi array-ul cu cele 2 adrese (instr ce urmeaza dupa condjump si labelul la care se face condjump),
+    // voi folosi ce gasesc in table-ul asta pe post de offset 
+
+    fprintf(out, "4,0,0,4,4,0,0,0\n");
+}
+
+void emit_jg_table(FILE *out) {
+    fprintf(out, "jg_table:\n");
+    fprintf(out, "    .byte ");
+    // la fel ca la jge
+
+    // 000, 011  vor fi valorile pt flag la care vom efectua jump-ul conditionat
+    fprintf(out, "4,0,0,4,0,0,0,0\n");
+}
+
+void emit_jl_table(FILE *out) {
+    fprintf(out, "jl_table:\n");
+    fprintf(out, "    .byte ");
+    // la fel ca la jge
+
+    // 001, 010  vor fi valorile pt flag la care vom efectua jump-ul conditionat
+    fprintf(out, "0,4,4,0,0,0,0,0\n");
+}
+
+void emit_jle_table(FILE *out) {
+    fprintf(out, "jle_table:\n");
+    fprintf(out, "    .byte ");
+    // la fel ca la jge
+
+    // 001, 010, 100  vor fi valorile pt flag la care vom efectua jump-ul conditionat
+    fprintf(out, "0,4,4,0,4,0,0,0\n");
+}
+
+void emit_je_table(FILE *out) {
+    fprintf(out, "je_table:\n");
+    fprintf(out, "    .byte ");
+    // la fel ca la jge
+
+    // 100  va fi singura valoare valida pt flag la care vom efectua jump-ul conditionat
+    fprintf(out, "0,0,0,0,4,0,0,0\n");
+}
+
+void emit_jne_table(FILE *out) {
+    fprintf(out, "jne_table:\n");
+    fprintf(out, "    .byte ");
+    // la fel ca la jge
+
+    // orice inafara de 100 vor fi valori pt flag la care vom efectua jump-ul conditionat
+    fprintf(out, "4,4,4,4,0,4,4,4\n");
+}
+
 void emit_shift_table(FILE *out) { // folosit pentru a "calma" numarul cu care va fi shiftat operandul, inainte de a folosi acel numar
     fprintf(out, "shift_table:\n");    // pentru a cauta in lookup table-ul respectiv instructiunii
     fprintf(out, "    .byte ");     // economisim astfel o tona de memorie fata de celelalte lookup table-uri
@@ -66,10 +126,10 @@ void emit_sar_table(FILE *out) {
 // Daca am cmp %eax, %ebx => ebx - eax si actualizeaza flag-urile coresp
 // JG: doar daca ebx - eax > 0 <=> daca ebx > eax => deci daca am 000/011
 // JGE: daca am ebx - eax >= 0 ⇔ ebx >= eax => deci pot avea 000/011/100/
-// JL: daca am ebx - eax < 0 ⇔ ebx < eax => deci daca am 001/010
-// JLE: daca am ebx-eax <= 0 ⇔ ebx <= eax => deci daca am 001/010/100
-// JE: daca am ebx - eax == 0 ⇔ ebx == eax => deci daca am 100
-// JNE: daca am ebx - eax != 0 ⇔ ebx != eax => deci daca am 000/001/010/011
+// JL: daca am ebx - eax < 0 <=> ebx < eax => deci daca am 001/010
+// JLE: daca am ebx-eax <= 0 <=> ebx <= eax => deci daca am 001/010/100
+// JE: daca am ebx - eax == 0 <=> ebx == eax => deci daca am 100
+// JNE: daca am ebx - eax != 0 <=> ebx != eax => deci daca am 000/001/010/011
 
 
 // tot 256 x 256, consider i dest, j src 
@@ -84,8 +144,8 @@ void emit_sar_table(FILE *out) {
     // altfel e posibil overflow, deoarece "cresc" intr-o anumita directie, inspre o anumita limita, nu inspre 0 ca in celelalt caz 
     // verific astfel, daca semnul lui dest este diferit de semnul rezultatului scaderii dest - src, deoarece ar inseamna ca am trecut pe cealalta parte (de la 127 la -128 de ex)
 
-// ramane sa impachetez valorile in var flag
-// 
+
+
 
 void emit_cmp_table(FILE *out) {
     fprintf(out, "cmp_table:\n");
@@ -211,17 +271,17 @@ void emit_not_table(FILE *out) {
 }
 
 void emit_program(FILE *out) {
-
+    int condjumps = 0; // va fi folosit pentru crearea de label-uri noi pentru jumpuri conditionale 
     // pastram .data exact cum a fost
     fprintf(out, ".data\n");
     fwrite(data_section, 1, data_len, out);
     fprintf(out, "tmp: .long 0\n");
-    fprintf(out, "cmp_result: .long 0\n");
-
     fprintf(out, "val1: .long 0\n");
     fprintf(out, "val2: .long 0\n");
-    fprintf(out, "restore: .long 0\n");
-    fprintf(out, "flags: .long 0\n");
+    fprintf(out, "restore: .long 0\n"); // pentru restaurarea lui ebx 
+    fprintf(out, "flags: .long 0\n"); 
+    fprintf(out, "jumps: .long 0, 0\n"); // jumps[0] => adresa imediat dupa condjmp, jumps[1] => adresa la care sar daca cond e indeplinita 
+    fprintf(out, "jumpaddress: .long 0\n"); // unde voi stoca efectiv adresa selectata din array-ul precedent
     
     emit_inc_table(out);
     emit_add_table(out);
@@ -528,16 +588,242 @@ void emit_program(FILE *out) {
         }
         
         else if (program[i].type == INSTR_CMP) {
-            // deocamdata nu comparam — doar salvam operanzii
-            // fprintf(out, "    mov %s, tmp\n", program[i].op1);
-            // fprintf(out, "    mov tmp, cmp_result\n");
+            // obiectivul va fi sa salvez in variabila flags (din .data) rezultatul operatiei de cmp (sub formatul tabelului, imp fiind ultimii 3 biti)
+            // in lookup table, i e dest, j e src, deci 
+            fprintf(out, "    # Movfuscated CMP %s, %s\n", program[i].op1, program[i].op2);
+            // op2 va fi dest, op1 va fi src 
+            // cmp face dest - src deci op2 - op1 = > op2 va fi i, op1 va fi j = > op1 va fi coloana, op2 va fi linia
+            // deci op1 in bl, op2 in bh
+            // salvez in val1, val2 operanzii
+            fprintf(out, "    movl %s, val1\n", program[i].op1); // src - j
+            fprintf(out, "    movl %s, val2\n", program[i].op2); // dest - i
+            // salvez ebx si il curat
+            fprintf(out, "    movl %%ebx, restore\n");
+            fprintf(out, "    movl $0, %%ebx\n");;
 
-            // ba ii voi salva pe ambii operatori 
+            // folosesc bx pentru accesarea adresei corespunzatoare, linia in bh (*256) si coloana in bl 
+            fprintf(out, "    movb val1, %%bl\n");
+            fprintf(out, "    movb val2, %%bh\n");
+            fprintf(out, "    movzbl cmp_table(%%ebx), %%ebx\n");
+            fprintf(out, "    movl %%ebx, flags\n");
+
+            // in flags voi avea 0000 0000 0000 0000 0000 0000 0000 0ZSO (Z - zero, S - sign, O - overflow)
+            // interpretarea lui flags o sa o fac propriuzis in blocul pentru instructiunea condtionala respectiva
+
+            // restaurez ebx 
+            fprintf(out, "    movl restore, %%ebx\n");
+
         }
+            // jump-uri conditionale
+            // variabila flags din .data va contine deja rezultatul (flag-urile actualizate) instructiunii cmp
+            // pe formatul 0000 0000 0000 0000 0000 0000 0000 0ZSO
+            // JGE eax, ebx: daca am ebx - eax >= 0 <=> ebx >= eax => deci daca am in flags 000 / 011 / 100 sar
+
+            // fac table-uri pentru fiecare instr conditionala 
+            // structurez cu cate 7 elemente fiecare tabel - avand codificarea pe 3 biti ca cheie de accesare
+            // si in ea va fi 1 sau 0 
+            //                  000  001    011     111     010     110    100      101
+            // .long jge_table: 1     0      1       0       0       0       1
+
+            // ii dau codificarea (long-ul cu cei 3 biti la inceput) ca offset iar aici voi gasi fie offsetul folosit
+            // pentru array-ul cu adresele celor 2 label-uri, una imediat dupa condjump la offset 0 
+            // si la offset 4, label-ul la care duce condjump daca e adevarat
+            
 
         else if (program[i].type == INSTR_JGE) {
-            fprintf(out, "    jge %s\n", program[i].op1);
+            fprintf(out, "    # Movfuscated JGE %s\n", program[i].op1);
+
+            // salvez si curat ebx 
+            fprintf(out, "    movl %%ebx, restore\n");
+            fprintf(out, "    movl $0, %%ebx\n");
+
+            // mut adresa label-ului din op1
+            fprintf(out, "    movl $%s, %%ebx\n", program[i].op1);
+            fprintf(out, "    movl %%ebx, jumps+4\n");
+            // mut adresa labelului "fictiv" la care sar daca cmp nu a produs flag-ul necesar sariturii
+            fprintf(out, "    movl $label%d, %%ebx\n", condjumps);
+            fprintf(out, "    movl %%ebx, jumps\n");
+            // mut flags in ebx ca sa il folosesc pe post de offset cand caut in table-ul coresp instructiunii conditionale
+            fprintf(out, "    movl flags, %%ebx\n");
+            fprintf(out, "    movzbl jge_table(%%ebx), %%ebx\n");
+            // mut adresa label-ului ales in jumpaddress
+            fprintf(out, "    movl jumps(%%ebx), %%ebx\n");
+            fprintf(out, "    movl %%ebx, jumpaddress\n");
+
+            // restaurez ebx
+            fprintf(out, "    movl restore, %%ebx\n");
+            
+            // * e ca sa sar la adresa din variabila
+            fprintf(out, "    jmp *jumpaddress\n");
+
+            // printez label-ul folosit in caz ca nu se executa condjump-ul 
+            fprintf(out, "label%d:\n", condjumps);
+            // incrementez sufixul label-urilor
+            condjumps++; 
         }
+
+        else if (program[i].type == INSTR_JG) {
+            fprintf(out, "    # Movfuscated JG %s\n", program[i].op1);
+
+            // salvez si curat ebx 
+            fprintf(out, "    movl %%ebx, restore\n");
+            fprintf(out, "    movl $0, %%ebx\n");
+
+            // mut adresa label-ului din op1
+            fprintf(out, "    movl $%s, %%ebx\n", program[i].op1);
+            fprintf(out, "    movl %%ebx, jumps+4\n");
+            // mut adresa labelului "fictiv" la care sar daca cmp nu a produs flag-ul necesar sariturii
+            fprintf(out, "    movl $label%d, %%ebx\n", condjumps);
+            fprintf(out, "    movl %%ebx, jumps\n");
+            // mut flags in ebx ca sa il folosesc pe post de offset cand caut in table-ul coresp instructiunii conditionale
+            fprintf(out, "    movl flags, %%ebx\n");
+            fprintf(out, "    movzbl jg_table(%%ebx), %%ebx\n");
+            // mut adresa label-ului ales in jumpaddress
+            fprintf(out, "    movl jumps(%%ebx), %%ebx\n");
+            fprintf(out, "    movl %%ebx, jumpaddress\n");
+
+            // restaurez ebx
+            fprintf(out, "    movl restore, %%ebx\n");
+            
+            // * e ca sa sar la adresa din variabila
+            fprintf(out, "    jmp *jumpaddress\n");
+
+            // printez label-ul folosit in caz ca nu se executa condjump-ul 
+            fprintf(out, "label%d:\n", condjumps);
+            // incrementez sufixul label-urilor
+            condjumps++; 
+        }
+
+        else if (program[i].type == INSTR_JL) {
+            fprintf(out, "    # Movfuscated JL %s\n", program[i].op1);
+
+            // salvez si curat ebx 
+            fprintf(out, "    movl %%ebx, restore\n");
+            fprintf(out, "    movl $0, %%ebx\n");
+
+            // mut adresa label-ului din op1
+            fprintf(out, "    movl $%s, %%ebx\n", program[i].op1);
+            fprintf(out, "    movl %%ebx, jumps+4\n");
+            // mut adresa labelului "fictiv" la care sar daca cmp nu a produs flag-ul necesar sariturii
+            fprintf(out, "    movl $label%d, %%ebx\n", condjumps);
+            fprintf(out, "    movl %%ebx, jumps\n");
+            // mut flags in ebx ca sa il folosesc pe post de offset cand caut in table-ul coresp instructiunii conditionale
+            fprintf(out, "    movl flags, %%ebx\n");
+            fprintf(out, "    movzbl jl_table(%%ebx), %%ebx\n");
+            // mut adresa label-ului ales in jumpaddress
+            fprintf(out, "    movl jumps(%%ebx), %%ebx\n");
+            fprintf(out, "    movl %%ebx, jumpaddress\n");
+
+            // restaurez ebx
+            fprintf(out, "    movl restore, %%ebx\n");
+            
+            // * e ca sa sar la adresa din variabila
+            fprintf(out, "    jmp *jumpaddress\n");
+
+            // printez label-ul folosit in caz ca nu se executa condjump-ul 
+            fprintf(out, "label%d:\n", condjumps);
+            // incrementez sufixul label-urilor
+            condjumps++; 
+        }
+
+
+        else if (program[i].type == INSTR_JLE) {
+            fprintf(out, "    # Movfuscated JLE %s\n", program[i].op1);
+
+            // salvez si curat ebx 
+            fprintf(out, "    movl %%ebx, restore\n");
+            fprintf(out, "    movl $0, %%ebx\n");
+
+            // mut adresa label-ului din op1
+            fprintf(out, "    movl $%s, %%ebx\n", program[i].op1);
+            fprintf(out, "    movl %%ebx, jumps+4\n");
+            // mut adresa labelului "fictiv" la care sar daca cmp nu a produs flag-ul necesar sariturii
+            fprintf(out, "    movl $label%d, %%ebx\n", condjumps);
+            fprintf(out, "    movl %%ebx, jumps\n");
+            // mut flags in ebx ca sa il folosesc pe post de offset cand caut in table-ul coresp instructiunii conditionale
+            fprintf(out, "    movl flags, %%ebx\n");
+            fprintf(out, "    movzbl jle_table(%%ebx), %%ebx\n");
+            // mut adresa label-ului ales in jumpaddress
+            fprintf(out, "    movl jumps(%%ebx), %%ebx\n");
+            fprintf(out, "    movl %%ebx, jumpaddress\n");
+
+            // restaurez ebx
+            fprintf(out, "    movl restore, %%ebx\n");
+            
+            // * e ca sa sar la adresa din variabila
+            fprintf(out, "    jmp *jumpaddress\n");
+
+            // printez label-ul folosit in caz ca nu se executa condjump-ul 
+            fprintf(out, "label%d:\n", condjumps);
+            // incrementez sufixul label-urilor
+            condjumps++; 
+        }
+    
+
+        else if (program[i].type == INSTR_JE) {
+            fprintf(out, "    # Movfuscated JE %s\n", program[i].op1);
+
+            // salvez si curat ebx 
+            fprintf(out, "    movl %%ebx, restore\n");
+            fprintf(out, "    movl $0, %%ebx\n");
+
+            // mut adresa label-ului din op1
+            fprintf(out, "    movl $%s, %%ebx\n", program[i].op1);
+            fprintf(out, "    movl %%ebx, jumps+4\n");
+            // mut adresa labelului "fictiv" la care sar daca cmp nu a produs flag-ul necesar sariturii
+            fprintf(out, "    movl $label%d, %%ebx\n", condjumps);
+            fprintf(out, "    movl %%ebx, jumps\n");
+            // mut flags in ebx ca sa il folosesc pe post de offset cand caut in table-ul coresp instructiunii conditionale
+            fprintf(out, "    movl flags, %%ebx\n");
+            fprintf(out, "    movzbl je_table(%%ebx), %%ebx\n");
+            // mut adresa label-ului ales in jumpaddress
+            fprintf(out, "    movl jumps(%%ebx), %%ebx\n");
+            fprintf(out, "    movl %%ebx, jumpaddress\n");
+
+            // restaurez ebx
+            fprintf(out, "    movl restore, %%ebx\n");
+            
+            // * e ca sa sar la adresa din variabila
+            fprintf(out, "    jmp *jumpaddress\n");
+
+            // printez label-ul folosit in caz ca nu se executa condjump-ul 
+            fprintf(out, "label%d:\n", condjumps);
+            // incrementez sufixul label-urilor
+            condjumps++; 
+        }
+
+
+        else if (program[i].type == INSTR_JNE) {
+            fprintf(out, "    # Movfuscated JNE %s\n", program[i].op1);
+
+            // salvez si curat ebx 
+            fprintf(out, "    movl %%ebx, restore\n");
+            fprintf(out, "    movl $0, %%ebx\n");
+
+            // mut adresa label-ului din op1
+            fprintf(out, "    movl $%s, %%ebx\n", program[i].op1);
+            fprintf(out, "    movl %%ebx, jumps+4\n");
+            // mut adresa labelului "fictiv" la care sar daca cmp nu a produs flag-ul necesar sariturii
+            fprintf(out, "    movl $label%d, %%ebx\n", condjumps);
+            fprintf(out, "    movl %%ebx, jumps\n");
+            // mut flags in ebx ca sa il folosesc pe post de offset cand caut in table-ul coresp instructiunii conditionale
+            fprintf(out, "    movl flags, %%ebx\n");
+            fprintf(out, "    movzbl jne_table(%%ebx), %%ebx\n");
+            // mut adresa label-ului ales in jumpaddress
+            fprintf(out, "    movl jumps(%%ebx), %%ebx\n");
+            fprintf(out, "    movl %%ebx, jumpaddress\n");
+
+            // restaurez ebx
+            fprintf(out, "    movl restore, %%ebx\n");
+            
+            // * e ca sa sar la adresa din variabila
+            fprintf(out, "    jmp *jumpaddress\n");
+
+            // printez label-ul folosit in caz ca nu se executa condjump-ul 
+            fprintf(out, "label%d:\n", condjumps);
+            // incrementez sufixul label-urilor
+            condjumps++; 
+        }    
 
         else if (program[i].type == INSTR_JMP) {
             fprintf(out, "    jmp %s\n", program[i].op1);
