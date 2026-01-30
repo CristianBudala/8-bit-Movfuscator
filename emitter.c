@@ -291,7 +291,6 @@ void emit_program(FILE *out) {
     fprintf(out, "flags: .long 0\n"); 
     fprintf(out, "jumps: .long 0, 0\n"); // jumps[0] => adresa imediat dupa condjmp, jumps[1] => adresa la care sar daca cond e indeplinita 
     fprintf(out, "jumpaddress: .long 0\n"); // unde voi stoca efectiv adresa selectata din array-ul precedent
-    fprintf(out, "counter: .long 1, 0\n"); // aceeasi logica ca jumps, folosita pentru a incremeneta loop counter[0] = nu incrementez counter[1] incrementez 
     emit_inc_table(out);
     emit_add_table(out);
     emit_sub_table(out);
@@ -734,7 +733,7 @@ void emit_program(FILE *out) {
             // incrementez sufixul label-urilor
             condjumps++; 
         }
-
+        
 
         else if (program[i].type == INSTR_JLE) {
             fprintf(out, "    # Movfuscated JLE %s\n", program[i].op1);
@@ -767,7 +766,7 @@ void emit_program(FILE *out) {
             // incrementez sufixul label-urilor
             condjumps++; 
         }
-    
+        
 
         else if (program[i].type == INSTR_JE) {
             fprintf(out, "    # Movfuscated JE %s\n", program[i].op1);
@@ -833,7 +832,7 @@ void emit_program(FILE *out) {
             // incrementez sufixul label-urilor
             condjumps++; 
         }    
-        // Loop sare la $label daca ecx e 0, altfel il decrementeaza, asadar voi implementa si logica de decrement
+        // Loop il decrementeaza pe ecx, si daca e zero sare la label
         // practic dec %ecx, cmp $0, %ecx, je $label 
 
 
@@ -844,6 +843,10 @@ void emit_program(FILE *out) {
             fprintf(out, "    movl %%ebx, restore\n");
             fprintf(out, "    movl $0, %%ebx\n");
 
+            // decrementez ecx
+            fprintf(out, "    movl %%ecx, %%ebx\n"); 
+            fprintf(out, "    movzbl dec_table(%%ebx), %%ebx\n"); 
+            fprintf(out, "    mov %%ebx, %%ecx\n");
 
             // logica de la cmp 
             // voi considera ca am cmp $0, %ecx 
@@ -853,6 +856,7 @@ void emit_program(FILE *out) {
             // cmp face dest - src deci op2 - op1 = > op2 va fi i, op1 va fi j = > op1 va fi coloana, op2 va fi linia
             // deci op1 in bl, op2 in bh
             // salvez in val1, val2 operanzii
+            fprintf(out, "    movl $0, %%ebx\n");
             fprintf(out, "    movl %%ebx, val1\n"); // src = ebx care e 0
             fprintf(out, "    movl %%ecx, val2\n"); // dest = ecx 
             
@@ -864,10 +868,7 @@ void emit_program(FILE *out) {
             fprintf(out, "    movl %%ebx, flags\n");
 
             // in flags voi avea 0000 0000 0000 0000 0000 0000 0000 0ZSO (Z - zero, S - sign, O - overflow)
-            // golesc iar ebx
-            fprintf(out, "    movl $0, %%ebx\n");
-
-            // mut adresa label-ului din op1
+            // mut adresa label-ului care ii apartine lui loop in ebx
             fprintf(out, "    movl $%s, %%ebx\n", program[i].op1);
             fprintf(out, "    movl %%ebx, jumps+4\n");
             // mut adresa labelului "fictiv" la care sar daca cmp nu a produs flag-ul necesar sariturii
@@ -875,23 +876,11 @@ void emit_program(FILE *out) {
             fprintf(out, "    movl %%ebx, jumps\n");
             // mut flags in ebx ca sa il folosesc pe post de offset cand caut in table-ul coresp instructiunii conditionale
             fprintf(out, "    movl flags, %%ebx\n");
-            fprintf(out, "    movzbl je_table(%%ebx), %%ebx\n");
+            fprintf(out, "    movzbl jne_table(%%ebx), %%ebx\n");
             // mut adresa label-ului ales in jumpaddress
             fprintf(out, "    movl jumps(%%ebx), %%ebx\n");
             fprintf(out, "    movl %%ebx, jumpaddress\n");
-            // repet operatia, doar ca pentru counter
-            fprintf(out, "    movl flags, %%ebx\n");
-            fprintf(out, "    movzbl je_table(%%ebx), %%ebx\n");
-            // caut in counter cu offsetul din ebx
-            // daca ebx e 4 iau 0, daca e 0 iau 1
-            // daca e 1 va trb sa decrementez
-            fprintf(out, "    movl counter(%%ebx), %%ebx\n");
-            // mut adresa lui dec table in ebx 
-            // fac cumva 
-            // TO DO: finish cu iddea de a folosi schema cu paranteze sa accesezi fie ecx - 1 fie ecx in dec table
-    
-            fprintf(out, "    movzbl $dec_table, %%ebx\n"); 
-            fprintf(out, "    movzbl (), %%ebx\n"); 
+            
 
 
             // restaurez ebx
