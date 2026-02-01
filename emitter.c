@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "parser.h"
 #include <string.h>
-
+// to do list: testate, acctualizat tabel, + jurnal 
 
 void emit_jge_table(FILE *out) {
     fprintf(out, "jge_table:\n");
@@ -233,6 +233,63 @@ void emit_sub_table(FILE *out) {
     }
 }
 
+// mul operand => (edx, eax) = eax * op
+// in cazul meu pe 8 biti voi merge pe logica: mul operand => ax = al * operand
+// mul table-ul va functiona pe word-uri de 2 bytes (similar cu modul de operare al instructiunii mul) 
+// accesarea va fi putin diferita in schimb, avand 2 bytes pe care trb sa ii iau din lookup table
+// voi merge pe logica: movw mul_table(, %bx, 2), %ebx => ebx = mul_table (adresa primului element) + (bh * 256 + bl) * 2
+// similar, in cazul asta, bx va tine in bh linia si in bl coloana => bx = bh * 256 + bl la fel ca in celelalte implementari, doar ca cu acel 2 pentru marime
+// folosit movw ca sa iau doar 2 bytes!!
+
+
+void emit_mul_table(FILE *out) {
+    fprintf(out, "mul_table:\n");
+    for (int i = 0; i < 256; i++) {
+        fprintf(out, "    .word "); // Rand nou pentru fiecare i (high byte), word pentru ca am nevoie de 2 bytes aici 
+        for (int j = 0; j < 256; j++) {
+            // calculez inmultirea
+            int mul = (i * j);
+            fprintf(out, "%d%s", mul, (j == 255) ? "" : ", ");
+        }
+        fprintf(out, "\n");
+    }
+}
+
+// div operand => (edx, eax) = (edx, eax) / operand => eax are catul, edx restul 
+// in versiunea mea pe 8 biti, o sa merg pe logica: div operand => al / operand => al cat, dl rest  (primii 8 biti sunt dl, urmatorii 8 biti sunt al)
+// 0x   12      34
+//      al      dl
+//     cat     rest
+// cand preiau rezultatul din bx, o sa fac movb bh, al si movb bl, dl 
+void emit_div_table(FILE *out) {
+    fprintf(out, "div_table:\n");
+    for (int i = 0; i < 256; i++) {
+        fprintf(out, "    .word "); // Rand nou pentru fiecare i (high byte), word pentru ca am nevoie de 2 bytes aici 
+        for (int j = 0; j < 256; j++) {
+            // calculez impartirea si restul
+            int div, rest;
+            // nu pot imparti la 0 din pacate 
+            // voi face totul pur si simplu 0 in cazul asta
+            if (j == 0){
+               rest = 0; 
+               div = 0;
+            } 
+            else {
+                rest = (i % j); 
+                div = (i / j);
+            } 
+            // pentru a putea fi interpretat corect elementul, va trebui sa il formatez coresp ideei de mai sus
+            // shiftez cu 8 biti la stanga catul, am astfel 0x1200, 12 => 1 byte ocupat de cat 
+            // folosesc | adica or pe biti pentru a pune restul in primii 8 biti 
+            // va functiona pentru ca or nu va afecta catul (ultimii 8 biti), dar pentru ca primii 8 biti sunt 0, va "adauga" restul in ei
+            int word = div << 8 | rest; 
+            fprintf(out, "%d%s", word, (j == 255) ? "" : ", ");
+        }
+        fprintf(out, "\n");
+    }
+}
+
+
 void emit_xor_table(FILE *out) {
     fprintf(out, "xor_table:\n");
     for (int i = 0; i < 256; i++) {
@@ -292,8 +349,26 @@ void emit_program(FILE *out) {
     fprintf(out, "jumps: .long 0, 0\n"); // jumps[0] => adresa imediat dupa condjmp, jumps[1] => adresa la care sar daca cond e indeplinita 
     fprintf(out, "jumpaddress: .long 0\n"); // unde voi stoca efectiv adresa selectata din array-ul precedent
     emit_inc_table(out);
+    emit_dec_table(out);
     emit_add_table(out);
     emit_sub_table(out);
+    emit_xor_table(out);
+    emit_or_table(out);
+    emit_not_table(out);
+    emit_and_table(out);
+    emit_shift_table(out);
+    emit_shl_table(out);
+    emit_shr_table(out);
+    emit_sar_table(out);
+    emit_mul_table(out);
+    emit_div_table(out);
+    emit_jge_table(out);
+    emit_jg_table(out);
+    emit_jl_table(out);
+    emit_jle_table(out);
+    emit_je_table(out);
+    emit_jne_table(out);
+    emit_cmp_table(out);
 
     fprintf(out, ".text\n");
     fprintf(out, ".global main\n");
@@ -303,19 +378,16 @@ void emit_program(FILE *out) {
     for (int i = 0; i < program_len; i++) {
 
         if (program[i].type == INSTR_MOV) {
+            fprintf(out, "    mov %s, %s\n", program[i].op1, program[i].op2);
+        }
 
-            // daca sursa e constanta ($...)
-            if (program[i].op1[0] == '$') {
+        // pentru lea voi trata exclusiv cazul in care src este o variabila
+        // transform astfel in mov $variabila, dest 
+        // $ ia adresa in loc de valoare
 
-                fprintf(out, "    movl %s, tmp\n", program[i].op1);
-                fprintf(out, "    movl tmp, %s\n", program[i].op2);
-            }
-            else {
-                // altfel — scriem mov normal
-                fprintf(out, "    movl %s, %s\n",
-                        program[i].op1,
-                        program[i].op2);
-            }
+        else if (program[i].type == INSTR_LEA) {
+            fprintf(out, "    movl $%s, %s\n", program[i].op1, program[i].op2);
+            // doar variabile, daca am altceva ca src, nu va functiona
         }
 
         else if (program[i].type == INSTR_XOR) {
@@ -335,7 +407,7 @@ void emit_program(FILE *out) {
                 // ebx va fi salvat daca este sursa, altfel oricum este modificat ca destinatie 
                 // ebx va fi curatat
 
-                if (strcmp(program[i].op2, "%%ebx") != 0){
+                if (strcmp(program[i].op2, "%ebx") != 0){
                     fprintf(out, "    movl %%ebx, restore\n");
                 } 
                 fprintf(out, "    movl $0, %%ebx\n");
@@ -353,7 +425,7 @@ void emit_program(FILE *out) {
                 fprintf(out, "    mov %%ebx, %s\n", program[i].op2);
 
                 // restaurez %EBX daca nu e destination in instructiune (inst src, dest)
-                if (strcmp(program[i].op2, "%%ebx") != 0) {
+                if (strcmp(program[i].op2, "%ebx") != 0) {
                     fprintf(out, "    movl restore, %%ebx\n");
                 }
             }
@@ -368,7 +440,7 @@ void emit_program(FILE *out) {
             fprintf(out, "    movl %s, val2\n", program[i].op2);
 
             // salvez si curat ebx
-            if (strcmp(program[i].op2, "%%ebx") != 0){
+            if (strcmp(program[i].op2, "%ebx") != 0){
                 fprintf(out, "    movl %%ebx, restore\n");
             } 
             fprintf(out, "    movl $0, %%ebx\n");
@@ -386,7 +458,7 @@ void emit_program(FILE *out) {
             fprintf(out, "    mov %%ebx, %s\n", program[i].op2);
 
             // restaurez %EBX daca nu e destination in instructiune (inst src, dest)
-            if (strcmp(program[i].op2, "%%ebx") != 0) {
+            if (strcmp(program[i].op2, "%ebx") != 0) {
                 fprintf(out, "    movl restore, %%ebx\n");
             }
         
@@ -402,7 +474,7 @@ void emit_program(FILE *out) {
             fprintf(out, "    movl %s, val2\n", program[i].op2);
 
             // ebx va fi curat
-            if (strcmp(program[i].op2, "%%ebx") != 0){
+            if (strcmp(program[i].op2, "%ebx") != 0){
                 fprintf(out, "    movl %%ebx, restore\n");
             } 
 
@@ -421,7 +493,7 @@ void emit_program(FILE *out) {
             fprintf(out, "    mov %%ebx, %s\n", program[i].op2);
 
             // restaurez %EBX daca nu e destination in instructiune (inst src, dest)
-            if (strcmp(program[i].op2, "%%ebx") != 0) {
+            if (strcmp(program[i].op2, "%ebx") != 0) {
                 fprintf(out, "    movl restore, %%ebx\n");
             }
         }
@@ -434,7 +506,7 @@ void emit_program(FILE *out) {
             fprintf(out, "    movl %s, val1\n", program[i].op1); 
 
             // ebx va fi curat
-            if (strcmp(program[i].op1, "%%ebx") != 0){
+            if (strcmp(program[i].op1, "%ebx") != 0){
                 fprintf(out, "    movl %%ebx, restore\n");
             } 
 
@@ -449,7 +521,7 @@ void emit_program(FILE *out) {
             fprintf(out, "    mov %%ebx, %s\n", program[i].op1);
 
             // restaurez %EBX
-            if (strcmp(program[i].op1, "%%ebx") != 0) {
+            if (strcmp(program[i].op1, "%ebx") != 0) {
                 fprintf(out, "    movl restore, %%ebx\n");
             }
             
@@ -466,7 +538,7 @@ void emit_program(FILE *out) {
             fprintf(out, "    movl %s, val2\n", program[i].op2);
             
             // ebx va fi curat si restaurat in caz ca nu e dest
-            if (strcmp(program[i].op2, "%%ebx") != 0){
+            if (strcmp(program[i].op2, "%ebx") != 0){
                 fprintf(out, "    movl %%ebx, restore\n");
             } 
 
@@ -495,7 +567,7 @@ void emit_program(FILE *out) {
             fprintf(out, "    mov %%ebx, %s\n", program[i].op2);
 
             // restaurez %EBX daca nu e destination in instructiune (inst src, dest)
-            if (strcmp(program[i].op2, "%%ebx") != 0) {
+            if (strcmp(program[i].op2, "%ebx") != 0) {
                 fprintf(out, "    movl restore, %%ebx\n");
             }
         }
@@ -510,7 +582,7 @@ void emit_program(FILE *out) {
             fprintf(out, "    movl %s, val2\n", program[i].op2);
             
             // ebx va fi curat si restaurat in caz ca nu e dest
-            if (strcmp(program[i].op2, "%%ebx") != 0){
+            if (strcmp(program[i].op2, "%ebx") != 0){
                 fprintf(out, "    movl %%ebx, restore\n");
             } 
 
@@ -539,7 +611,7 @@ void emit_program(FILE *out) {
             fprintf(out, "    mov %%ebx, %s\n", program[i].op2);
 
             // restaurez %EBX daca nu e destination in instructiune (inst src, dest)
-            if (strcmp(program[i].op2, "%%ebx") != 0) {
+            if (strcmp(program[i].op2, "%ebx") != 0) {
                 fprintf(out, "    movl restore, %%ebx\n");
             }
         }
@@ -556,7 +628,7 @@ void emit_program(FILE *out) {
             fprintf(out, "    movl %s, val2\n", program[i].op2);
             
             // ebx va fi curat si restaurat in caz ca nu e dest
-            if (strcmp(program[i].op2, "%%ebx") != 0){
+            if (strcmp(program[i].op2, "%ebx") != 0){
                 fprintf(out, "    movl %%ebx, restore\n");
             } 
 
@@ -585,7 +657,7 @@ void emit_program(FILE *out) {
             fprintf(out, "    mov %%ebx, %s\n", program[i].op2);
 
             // restaurez %EBX daca nu e destination in instructiune (inst src, dest)
-            if (strcmp(program[i].op2, "%%ebx") != 0) {
+            if (strcmp(program[i].op2, "%ebx") != 0) {
                 fprintf(out, "    movl restore, %%ebx\n");
             }
         }
@@ -594,7 +666,23 @@ void emit_program(FILE *out) {
             // Folosim %s pentru ca op1 contine textul "$0x80" direct
             fprintf(out, "    int %s\n", program[i].op1);
         }
-        
+
+        // push si pop 
+        // din pacate nu pot cu usurinta sa movfuschez instructiunile astea
+        // as avea nevoie de un lookup table imens sau de o metoda de a verifica daca am carry
+
+        // raman asa cum sunt :( 
+        else if (program[i].type == INSTR_PUSHL) {
+            fprintf(out, "    push %s\n", program[i].op1);
+        }
+
+        else if (program[i].type == INSTR_POPL) {
+            
+            fprintf(out, "    popl %s\n", program[i].op1);
+        }
+
+
+
         else if (program[i].type == INSTR_CMP) {
             // obiectivul va fi sa salvez in variabila flags (din .data) rezultatul operatiei de cmp (sub formatul tabelului, imp fiind ultimii 3 biti)
             // in lookup table, i e dest, j e src, deci 
@@ -733,7 +821,7 @@ void emit_program(FILE *out) {
             // incrementez sufixul label-urilor
             condjumps++; 
         }
-        
+
 
         else if (program[i].type == INSTR_JLE) {
             fprintf(out, "    # Movfuscated JLE %s\n", program[i].op1);
@@ -898,6 +986,10 @@ void emit_program(FILE *out) {
         else if (program[i].type == INSTR_JMP) {
             fprintf(out, "    jmp %s\n", program[i].op1);
         }
+        // ramane neschimbata, ar necesita aritmetica cu esp (adica pe 32 de biti)
+        else if (program[i].type == INSTR_CALL) {
+            fprintf(out, "    call %s\n", program[i].op1);
+        }
 
         else if (program[i].type == INSTR_LABEL) {
             fprintf(out, "%s:\n", program[i].op1);
@@ -908,7 +1000,7 @@ void emit_program(FILE *out) {
 
             fprintf(out, "    # Movfuscated INC\n");
 
-            if (strcmp(program[i].op1, "%%ebx") != 0){
+            if (strcmp(program[i].op1, "%ebx") != 0){
                 fprintf(out, "    movl %%ebx, restore\n");
             }
 
@@ -921,7 +1013,7 @@ void emit_program(FILE *out) {
             // Scriem rezultatul înapoi
             fprintf(out, "    mov %%ebx, %s\n", program[i].op1);
 
-            if (strcmp(program[i].op1, "%%ebx") != 0) {
+            if (strcmp(program[i].op1, "%ebx") != 0) {
                 fprintf(out, "    movl restore, %%ebx\n");
             }
         }
@@ -930,7 +1022,7 @@ void emit_program(FILE *out) {
 
             fprintf(out, "    # Movfuscated DEC\n");
 
-            if (strcmp(program[i].op1, "%%ebx") != 0){
+            if (strcmp(program[i].op1, "%ebx") != 0){
                 fprintf(out, "    movl %%ebx, restore\n");
             }
 
@@ -944,16 +1036,70 @@ void emit_program(FILE *out) {
             fprintf(out, "    mov %%ebx, %s\n", program[i].op1);
 
             //restaurare ebx daca e nevoie
-            if (strcmp(program[i].op1, "%%ebx") != 0) {
+            if (strcmp(program[i].op1, "%ebx") != 0) {
                 fprintf(out, "    movl restore, %%ebx\n");
             }
         }
 
-
-
-        else if (program[i].type == INSTR_ADD) {
-            // era de 2 ori fprintf(out, "    # Movfuscated ADD %s, %s\n", program[i].op1, program[i].op2);
+        else if (program[i].type == INSTR_MUL) {            
             
+            fprintf(out, "    # Movfuscated MUL %s\n", program[i].op1);
+            
+            // curat ebx si il pregatesc pt restaurare 
+            // pentru a mentine compatibilitatea cu comportamentul clasic din x86 32 voi curata si edx
+            fprintf(out, "    movl %%ebx, restore\n");
+            
+
+            fprintf(out, "    movl $0, %%ebx\n");
+            fprintf(out, "    movl $0, %%edx\n");
+
+            // mul operand => ax = al * op
+            fprintf(out, "    movl %s, val1\n", program[i].op1);
+            fprintf(out, "    movb val1, %%bl\n");  
+            fprintf(out, "    movb %%al, %%bh\n");
+            
+
+            
+            // accesez word-ul folosind schema clasica cu bh si bl (bh * 256 + bl), doar ca acum folosesc si acel 2 pentru ca am word-uri 
+            fprintf(out, "    movw mul_table(, %%ebx, 2), %%bx\n");
+            
+            fprintf(out, "    movw %%bx, %%ax\n");
+
+            // restaurez ebx
+            fprintf(out, "    movl restore, %%ebx\n");
+
+        }
+
+
+        else if (program[i].type == INSTR_DIV) {            
+            
+            fprintf(out, "    # Movfuscated DIV %s\n", program[i].op1);
+            
+            // curat ebx si il pregatesc pt restaurare 
+            // pentru a mentine compatibilitatea cu comportamentul clasic din x86 32 voi curata si edx
+            fprintf(out, "    movl %%ebx, restore\n");
+            
+
+            fprintf(out, "    movl $0, %%ebx\n");
+            fprintf(out, "    movl $0, %%edx\n");
+
+            // div operand => al / operand => al cat, dl rest  (primii 8 biti sunt dl, urmatorii 8 biti sunt al)
+            fprintf(out, "    movl %s, val1\n", program[i].op1);  
+            fprintf(out, "    movb %%al, %%bh\n");
+            fprintf(out, "    movb val1, %%bl\n");
+            
+            // accesez word-ul folosind schema clasica cu bh si bl (bh * 256 + bl), doar ca acum folosesc si acel 2 pentru ca am word-uri 
+            fprintf(out, "    movw div_table(, %%ebx, 2), %%bx\n");
+            
+            fprintf(out, "    movb %%bh, %%al\n");
+            fprintf(out, "    movb %%bl, %%dl\n");
+
+            // restaurez ebx
+            fprintf(out, "    movl restore, %%ebx\n");
+
+        }
+
+        else if (program[i].type == INSTR_ADD) {            
             // Strategia:
             // Op1 -> BH (High byte)
             // Op2 -> BL (Low byte)
@@ -966,7 +1112,7 @@ void emit_program(FILE *out) {
             fprintf(out, "    movl %s, val2\n", program[i].op2);
             
             // Pregatim ebx pentru a fi index
-            if (strcmp(program[i].op2, "%%ebx") != 0){
+            if (strcmp(program[i].op2, "%ebx") != 0){
                 fprintf(out, "    movl %%ebx, restore\n");
             }
 
@@ -985,7 +1131,7 @@ void emit_program(FILE *out) {
             fprintf(out, "    mov %%ebx, %s\n", program[i].op2);
 
             // restaurez %EBX daca nu e destination in instructiune (inst src, dest)
-            if (strcmp(program[i].op2, "%%ebx") != 0) {
+            if (strcmp(program[i].op2, "%ebx") != 0) {
                 fprintf(out, "    movl restore, %%ebx\n");
             }
         }
@@ -998,7 +1144,7 @@ void emit_program(FILE *out) {
             fprintf(out, "    movl %s, val2\n", program[i].op2); // Destinatia (descazutul)
             
             // 2. Curatam EBX
-            if (strcmp(program[i].op2, "%%ebx") != 0){
+            if (strcmp(program[i].op2, "%ebx") != 0){
                 fprintf(out, "    movl %%ebx, restore\n");
             } 
 
@@ -1018,7 +1164,7 @@ void emit_program(FILE *out) {
             fprintf(out, "    mov %%ebx, %s\n", program[i].op2);
 
             // restaurez %EBX daca nu e destination in instructiune (inst src, dest)
-            if (strcmp(program[i].op2, "%%ebx") != 0) {
+            if (strcmp(program[i].op2, "%ebx") != 0) {
                 fprintf(out, "    movl restore, %%ebx\n");
             }
         }

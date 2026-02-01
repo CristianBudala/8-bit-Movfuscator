@@ -91,7 +91,7 @@ void parse_line(char *line) {
         }
     }
     // AND
-    else if (strcmp(token, "and") == 0) {
+    else if (strcmp(token, "and") == 0 || strcmp(token, "andl") == 0) {
         program[program_len].type = INSTR_AND;
         
         char *op1 = strtok(NULL, " \t,\n");
@@ -104,7 +104,7 @@ void parse_line(char *line) {
         }
     }
     //OR
-    else if (strcmp(token, "or") == 0) {
+    else if (strcmp(token, "or") == 0 || strcmp(token, "orl") == 0) {
         program[program_len].type = INSTR_OR;
         
         char *op1 = strtok(NULL, " \t,\n");
@@ -117,7 +117,7 @@ void parse_line(char *line) {
         }
     }
     // NOT
-    else if (strcmp(token, "not") == 0) {
+    else if (strcmp(token, "not") == 0 || strcmp(token, "notl") == 0) {
         program[program_len].type = INSTR_NOT;
         
         char *op1 = strtok(NULL, " \t,\n");
@@ -130,7 +130,7 @@ void parse_line(char *line) {
         }
     }
     // XOR
-    else if (strcmp(token, "xor") == 0) {
+    else if (strcmp(token, "xor") == 0 || strcmp(token, "xorl") == 0) {
         program[program_len].type = INSTR_XOR;
         
         char *op1 = strtok(NULL, " \t,\n");
@@ -195,7 +195,7 @@ void parse_line(char *line) {
     }
     // JL (Jump if less)
     else if (strcmp(token, "jl") == 0) {
-        program[program_len].type = INSTR_JG;
+        program[program_len].type = INSTR_JL;
         char *label = strtok(NULL, " \t,\n");
         if (label) {
             strcpy(program[program_len].op1, label);
@@ -281,6 +281,23 @@ void parse_line(char *line) {
             program_len++;
         }
     }
+    // call ramane neschimbat
+    else if (strcmp(token, "call") == 0) {
+        program[program_len].type = INSTR_CALL;
+        char *label = strtok(NULL, " \t,\n");
+        if (label) {
+            strcpy(program[program_len].op1, label);
+            program_len++;
+        }
+    }
+    else if (strcmp(token, "loop") == 0) {
+        program[program_len].type = INSTR_LOOP;
+        char *label = strtok(NULL, " \t,\n");
+        if (label) {
+            strcpy(program[program_len].op1, label);
+            program_len++;
+        }
+    }
     // INC (Increment)
     else if (strcmp(token, "inc") == 0) {
         program[program_len].type = INSTR_INC;
@@ -294,8 +311,88 @@ void parse_line(char *line) {
         }
     }
 
+    // DEC (decrement)
+    else if (strcmp(token, "dec") == 0) {
+        program[program_len].type = INSTR_DEC;
+        
+        // Luam operandul (ex: %eax)
+        char *op1 = strtok(NULL, " \t,\n");
+        
+        if (op1) {
+            strcpy(program[program_len].op1, op1);
+            program_len++;
+        }
+    }
+
+    // PUSHL / POPL
+
+    else if (strcmp(token, "pushl") == 0) {
+        program[program_len].type = INSTR_PUSHL;
+        
+        // Luam operandul (ex: %eax)
+        char *op1 = strtok(NULL, " \t,\n");
+        
+        if (op1) {
+            strcpy(program[program_len].op1, op1);
+            program_len++;
+        }
+    }
+
+    else if (strcmp(token, "popl") == 0) {
+        program[program_len].type = INSTR_POPL;
+        
+        // Luam operandul (ex: %eax)
+        char *op1 = strtok(NULL, " \t,\n");
+        
+        if (op1) {
+            strcpy(program[program_len].op1, op1);
+            program_len++;
+        }
+    }
+
+    // PUSHB / POPB
+
+    else if (strcmp(token, "pushb") == 0) {
+        program[program_len].type = INSTR_PUSHB;
+        
+        // Luam operandul (ex: %eax)
+        char *op1 = strtok(NULL, " \t,\n");
+        
+        if (op1) {
+            strcpy(program[program_len].op1, op1);
+            program_len++;
+        }
+    }
+
+    else if (strcmp(token, "popb") == 0) {
+        program[program_len].type = INSTR_POPB;
+        
+        // Luam operandul (ex: %eax)
+        char *op1 = strtok(NULL, " \t,\n");
+        
+        if (op1) {
+            strcpy(program[program_len].op1, op1);
+            program_len++;
+        }
+    }
+
+    // LEA
+
+    else if (strcmp(token, "lea") == 0) {
+        program[program_len].type = INSTR_LEA;
+        
+        char *op1 = strtok(NULL, " \t,\n");
+        char *op2 = strtok(NULL, " \t,\n");
+
+        if (op1 && op2) {
+            strcpy(program[program_len].op1, op1);
+            strcpy(program[program_len].op2, op2);
+            program_len++;
+        }
+    }
+
     // ADD
-    else if (strcmp(token, "add") == 0) {
+    else if (strcmp(token, "add") == 0 || strcmp(token, "addl") == 0) {
         program[program_len].type = INSTR_ADD;
         
         char *op1 = strtok(NULL, " \t,\n");
@@ -309,7 +406,7 @@ void parse_line(char *line) {
     }
 
     // SUB
-    else if (strcmp(token, "sub") == 0) {
+    else if (strcmp(token, "sub") == 0 || strcmp(token, "subl") == 0) {
         program[program_len].type = INSTR_SUB;
         
         char *op1 = strtok(NULL, " \t,\n");
@@ -322,5 +419,32 @@ void parse_line(char *line) {
         }
     }
 
+    // MUL
+    else if (strcmp(token, "mul") == 0 || strcmp(token, "mull") == 0) {
+        program[program_len].type = INSTR_MUL;
+        
+        char *op1 = strtok(NULL, " \t,\n");
+        char *op2 = strtok(NULL, " \t,\n");
+
+        if (op1 && op2) {
+            strcpy(program[program_len].op1, op1);
+            strcpy(program[program_len].op2, op2);
+            program_len++;
+        }
+    }
+
+    // DIV
+    else if (strcmp(token, "div") == 0 || strcmp(token, "divl") == 0) {
+    program[program_len].type = INSTR_DIV;
+        
+        char *op1 = strtok(NULL, " \t,\n");
+        char *op2 = strtok(NULL, " \t,\n");
+
+        if (op1 && op2) {
+            strcpy(program[program_len].op1, op1);
+            strcpy(program[program_len].op2, op2);
+            program_len++;
+        }
+    }
 }
 
