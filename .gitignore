@@ -8,3 +8,8 @@ output.s
 test_add
 test_sub
 test_sub.s
+test2.s 
+test3.s 
+test4.s 
+.out 
+
