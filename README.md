@@ -1,50 +1,43 @@
-  \_\_\_        \_     \_ \_                                   
-
- ( \_ )      | |\_\_ (\_) |\_                                 
-
- / \_ \\ \_\_\_\_\_| '\_ \\| | \_\_|                                
-
-| (\_) |\_\_\_\_\_| |\_) | | |\_                                 
-
- \\\_\_\_/\_     |\_.\_\_/|\_|\\\_\_|                  \_             
-
-|  \\/  | \_\_\_\_\_   \_\_/ \_|\_   \_ \_\_\_  \_\_\_ \_\_ \_| |\_ \_\_\_  \_ \_\_ 
-
-| |\\/| |/ \_ \\ \\ / / |\_| | | / \_\_|/ \_\_/ \_\` | \_\_/ \_ \\| '\_\_|
-
-| |  | | (\_) \\ V /|  \_| |\_| \\\_\_ \\ (\_| (\_| | || (\_) | |   
-
-|\_|  |\_|\\\_\_\_/ \\\_/ |\_|  \\\_\_,\_|\_\_\_/\\\_\_\_\\\_\_,\_|\\\_\_\\\_\_\_/|\_|
+```
+  ___        _     _ _                                   
+ ( _ )      | |__ (_) |_                                 
+ / _ \ _____| '_ \| | __|                                
+| (_) |_____| |_) | | |_                                 
+ \___/_     |_.__/|_|\__|                  _             
+|  \/  | _____   __/ _|_   _ ___  ___ __ _| |_ ___  _ __ 
+| |\/| |/ _ \ \ / / |_| | | / __|/ __/ _` | __/ _ \| '__|
+| |  | | (_) \ V /|  _| |_| \__ \ (_| (_| | || (_) | |   
+|_|  |_|\___/ \_/ |_|  \__,_|___/\___\__,_|\__\___/|_|
 
 8-bit Movfuscator
+Based on M/o/Vfuscator by Chris Domas - @xoreaxeaxeax
 
-Based on M/o/Vfuscator by Chris Domas \- @xoreaxeaxeax
+By Cristian Budala - @CristianBudala and Joshua Imosanu - @imo006
 
-By Cristian Budala \- @CristianBudala and Joshua Imosanu \- @imo006
-
-\------------------------------------------------------------------
+------------------------------------------------------------------
 
 University of Bucharest
-
 Department of Mathematics and Computer Science
-
 Year 1, Sem 1: Computer Systems Arhitecture
+```
 
 ## Overview
-
 In 2013, PhD candidate Stephen Dolan from the University of Cambridge wrote an academic paper, stating that, in Assembly x86, the [mov instruction is Turing-complete](https://harrisonwl.github.io/assets/courses/malware/spring2017/papers/mov-is-turing-complete.pdf). After a series of rigorous logical proofs, he ended the paper (see attachment) by stating:
+> "Removing all but the mov instruction from future iterations of
+> the x86 architecture would have many advantages: the instruction format would be greatly simplified, the expensive decode unit
+> would become much cheaper, and silicon currently used for complex functional units could be repurposed as even more cache.
+> **As long as someone else implements the compiler.**"
 
-"Removing all but the mov instruction from future iterations of the x86 architecture would have many advantages: the instruction format would be greatly simplified, the expensive decode unit would become much cheaper, and silicon currently used for complex functional units could be repurposed as even more cache. **As long as someone else implements the compiler.**"
+This challenge has been taken by Cybersecurity Researcher Chris Domas [@xoreaxeaxeax](https://github.com/xoreaxeaxeax), in 2016, with his [Movfuscator](https://github.com/xoreaxeaxeax/movfuscator?tab=readme-ov-file) project: a compiler that transforms all known Assembly x86 instructions (arithmetic, comparisons, jumps, function calls etc.) into "mov" only instructions.
+<br>
+The current project is a minimalistic, educational compiler for numbers on 8-bits, inspired by Chris Domas's original Movfuscator.
 
-This challenge has been taken by Cybersecurity Researcher Chris Domas [@xoreaxeaxeax](https://github.com/xoreaxeaxeax), in 2016, with his [Movfuscator](https://github.com/xoreaxeaxeax/movfuscator?tab=readme-ov-file) project: a compiler that transforms all known Assembly x86 instructions (arithmetic, comparisons, jumps, function calls etc.) into "mov" only instructions. 
-
-The current project is a more minimal, educational compiler for numbers on 8-bits, inspired by Chris Domas's original Movfuscator.
 
 🎓 This project was developed as part of the course "Computer Systems Arhitecture", under the supervision of [Prof. PhD. Cristian RUSU](https://www.researchgate.net/profile/Cristian-Rusu), at the Department for Mathematics and Computer Science, University of Bucharest.
 
 ## ❓ Why?
-
-By reducing a program to almost exclusively `MOV` instructions, reverse engineering becomes virtually impossible. It wipes out the patterns that disassemblers and decompilers depend on, so the code stops “making sense”. The code becomes almost impossible to break \- [still breakable](https://www.youtube.com/watch?v=d_R8i0dVBsQ), but the process becomes a lot lengthier and more exprensive. Plus it's fun\!
+By reducing a program to almost exclusively `MOV` instructions, reverse engineering becomes virtually impossible. It wipes out the patterns that disassemblers and decompilers depend on, so the code stops “making sense”. The code becomes almost impossible to break - [still breakable](https://www.youtube.com/watch?v=d_R8i0dVBsQ), but the process becomes a lot lengthier and more exprensive.
+Plus it's fun!
 
 ## ❗ Limitations
 
@@ -113,75 +106,62 @@ Current status of the pseudo-assembly instructions supported by the compiler:
 | **AND/OR/NOT/XOR** | Logic  | ✅ **Done** | inst\_table via %bx indexing |
 | **SHL/SHR/SAR/SAL** | Shift | ✅ **Done** | Shift\_table for the src, shift\_inst\_table via %bx indexing |
 | **LEA** | Logic | ✅ **Done** | Only works if the src is a variable\! |
-| **PUSH/POP** | Logic | ✅ **Done** | Not movfuscated. |
-| **CALL** | Control Flow | ✅ **Done** | Not movfuscated. |
-
-## Details behind each implementation and design choice we’ve made is inside the source code. We’ve made sure to leave ample explanations inside the comments. We suggest you check them out. 
+| **PUSH/POP** | Logic | ❌ **TBD** | Not movfuscated. |
+| **CALL** | Control Flow | ❌ **TBD** | Not movfuscated. |
 
 ## 🛠️ Usage Instructions
 
 ### Dependencies
-
-* **OS:** Linux terminal.  
+* **OS:** Linux terminal.
 * **Compiler:** GCC with 32-bit support (package `gcc-multilib`).
 
-### 1\. Clone the Repo
-
+### 1. Clone the Repo
 Duh.
-
+```bash
 git clone https://github.com/CristianBudala/8-bit-Movfuscator
-
 cd '8-bit-Movfuscator'
-
-### 2\. Build the Compiler
-
+```
+### 2. Build the Compiler
 Compile the source code of the movfuscator itself:
-
-gcc main.c parser.c emitter.c \-o movf
-
-### 3\. Create Assembly file for Movfuscation
-
-The code must be written in x86 AT\&T syntax.
-
-\*\*Note\!\*\* Use \`\#\` for comments, not \`;\`.
-
+```bash
+gcc main.c parser.c emitter.c -o movf
+```
+### 3. Create Assembly file for Movfuscation
+The code must be written in x86 AT&T syntax.<br>
+**Note!** Use `#` for comments, not `;`.
+```bash
 touch test.s
-
 nano test.s
-
-### 4\. Compile
-
+```
+### 4. Compile
+```bash
 ./movf test.s
-
-### 5\. Assemble and Link
-
-gcc \-m32 output.s \-o test \-no-pie
-
-### 6\. Run
-
+```
+### 5. Assemble and Link
+```bash
+gcc -m32 output.s -o test -no-pie
+```
+### 6. Run
+```bash
 ./test
-
-echo $? \# View the result
-
+echo $? # View the result
+```
 ## 👥 Authors
-
-- Cristian Budala (@CristianBudala)  
+- Cristian Budala (@CristianBudala)
 - Joshua Imosanu (@Imo006)
 
 ## References
-
-- [Dolan, S. (2013). mov is Turing-complete.](https://harrisonwl.github.io/assets/courses/malware/spring2017/papers/mov-is-turing-complete.pdf)  
-- [Domas, C. (2015). movfuscator](https://github.com/xoreaxeaxeax/movfuscator?tab=readme-ov-file)  
-- [Domas, C. (2015). The MoVfuscator: Turning "mov" into a soul crushing RE nightmare Christopher Domas](https://www.youtube.com/watch?v=R7EEoWg6Ekk)  
-- [Computerphile (2015). Turing Machines Collection](https://www.youtube.com/playlist?list=PLzH6n4zXuckrEzV0CB1xXbSdsP_a7VUoK)  
-- [Kirsch, J., & Jonischkeit, C. (2016). Movfuscator Be Gone](https://www.youtube.com/watch?v=d_R8i0dVBsQ)  
-- [Domas, C. (2015). Breaking the x86 Instruction Set](https://www.youtube.com/watch?v=KrksBdWcZgQ&list=PLyp2y3L9yp30eiGQPUghXEBEwHDrwMCw5&index=2)  
-- [Easy Theory (2021). Turing Machines (TMs)](https://www.youtube.com/playlist?list=PLylTVsqZiRXNkiHYuOMLrQAxmmRt5qDct)  
-- [Intel Corporation. Intel® 64 and IA-32 Architectures Software Developer’s Manuals.](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html)  
-- [Wikipedia contributors, “One-instruction set computer,” Wikipedia, Dec. 18, 2025\.](https://en.wikipedia.org/wiki/One-instruction_set_computer)  
-- "Theory of Computation"; Portland State University: Prof. Harry Porter; [www.cs.pdx/\~harry](http://www.cs.pdx/~harry)  
-- Google Gemini 3\. For debugging the code, fixing typos, double-checking logic, understanding of certain concepts and for gaps in our knowledge regarding the C programming language and its syntax (we probably should’ve gone with Python). 
+- [Dolan, S. (2013). mov is Turing-complete.](https://harrisonwl.github.io/assets/courses/malware/spring2017/papers/mov-is-turing-complete.pdf)
+- [Domas, C. (2015). movfuscator](https://github.com/xoreaxeaxeax/movfuscator?tab=readme-ov-file)
+- [Domas, C. (2015). The MoVfuscator: Turning "mov" into a soul crushing RE nightmare Christopher Domas](https://www.youtube.com/watch?v=R7EEoWg6Ekk)
+- [Computerphile (2015). Turing Machines Collection](https://www.youtube.com/playlist?list=PLzH6n4zXuckrEzV0CB1xXbSdsP_a7VUoK)
+- [Kirsch, J., & Jonischkeit, C. (2016). Movfuscator Be Gone](https://www.youtube.com/watch?v=d_R8i0dVBsQ)
+- [Domas, C. (2015). Breaking the x86 Instruction Set](https://www.youtube.com/watch?v=KrksBdWcZgQ&list=PLyp2y3L9yp30eiGQPUghXEBEwHDrwMCw5&index=2)
+- [Easy Theory (2021). Turing Machines (TMs)](https://www.youtube.com/playlist?list=PLylTVsqZiRXNkiHYuOMLrQAxmmRt5qDct)
+- [Intel Corporation. Intel® 64 and IA-32 Architectures Software Developer’s Manuals.](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html)
+- [Wikipedia contributors, “One-instruction set computer,” Wikipedia, Dec. 18, 2025.](https://en.wikipedia.org/wiki/One-instruction_set_computer)
+- "Theory of Computation"; Portland State University: Prof. Harry Porter; www.cs.pdx/~harry
+- Google, Gemini 3. For debugging the code, fixing typos, double-checking my logic and understanding of certain concepts and for when I wanted to do something, but didn't have enough knowledge in the C Programming Language (maybe I should have picked Python).
 
 ## 📝 License
-
-This project is MIT licensed.  
+This project is MIT licensed.
