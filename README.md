@@ -161,7 +161,8 @@ echo $? # View the result
 - [Intel Corporation. Intel® 64 and IA-32 Architectures Software Developer’s Manuals.](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html)
 - [Wikipedia contributors, “One-instruction set computer,” Wikipedia, Dec. 18, 2025.](https://en.wikipedia.org/wiki/One-instruction_set_computer)
 - "Theory of Computation"; Portland State University: Prof. Harry Porter; www.cs.pdx/~harry
-- Google, Gemini 3. For debugging the code, fixing typos, double-checking my logic and understanding of certain concepts and for when I wanted to do something, but didn't have enough knowledge in the C Programming Language (maybe I should have picked Python).
+- Neso Academy; C++ Programming
+- Google, Gemini 3. For debugging the code, fixing typos, double-checking my logic, understanding of certain concepts and for when I wanted to do something, but didn't know enough C (maybe I should have picked Python).
 
 ## 📝 License
 This project is MIT licensed.
